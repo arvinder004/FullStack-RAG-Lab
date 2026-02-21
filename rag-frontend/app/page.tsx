@@ -26,6 +26,9 @@ export default function Home() {
   // TRUE = AI is generating
   const [loading, setLoading] = useState(false);
 
+  // Store AbortController reference
+  const abortControllerRef = useRef<AbortController | null>(null)
+
   //reference for auto-scroll
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -53,6 +56,10 @@ export default function Home() {
 
     setLoading(true);
 
+    // create new abortcontroller for this request
+    const controller = new AbortController()
+    abortControllerRef.current = controller;
+
     // add user message to chat
     const newMessages: Message[] = [
       ...messages,
@@ -70,6 +77,7 @@ export default function Home() {
 
         //convert JS object into JSON string
         body: JSON.stringify({ message: input }),
+        signal: controller.signal
       });
 
       /*
@@ -124,8 +132,15 @@ export default function Home() {
           }
         }
       }
-    } catch (error) {
-      console.error("Error during generation: ", error)
+    } catch (error: any) {
+      /*
+        If aborted, fetch throws error. We detect it safely.
+      */
+      if (error.name === "AbortError"){
+        console.log("Generation stopped by user.")
+      } else {
+        console.error("Generation error: ", error)
+      }
     } finally {
       /*
         CRITICAL:
@@ -133,8 +148,18 @@ export default function Home() {
         This prevents UI freeze 
       */
       setLoading(false);
+      abortControllerRef.current = null;
     }
   };
+
+  /*
+    Stop button logic. Abort current request safely.
+  */
+  const stopGenerating = () => {
+      if(abortControllerRef.current){
+        abortControllerRef.current.abort()
+      }
+  }
 
   // allow pressing enter to send message (shif+enter for new line)
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -163,7 +188,6 @@ export default function Home() {
             {msg.content}
           </div>
         ))}
-
         <div ref={bottomRef} />
       </div>
 
@@ -172,30 +196,36 @@ export default function Home() {
           style={{
             ...styles.textarea,
             opacity: loading ? 0.6 : 1,
-            cursor: loading ? "not-allowed" : "text",
           }}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={
             loading
-              ? "Waiting for AI response..."
+              ? "AI is generating..."
               : "Type your message..."
           }
-          disabled={loading} // DISABLE typing while generating
+          disabled={loading}
         />
 
-        <button
-          style={{
-            ...styles.button,
-            opacity: loading ? 0.6 : 1,
-            cursor: loading ? "not-allowed" : "pointer",
-          }}
-          onClick={sendMessage}
-          disabled={loading} // DISABLE button
-        >
-          {loading ? "Thinking..." : "Send"}
-        </button>
+        {!loading ? (
+          <button
+            style={styles.button}
+            onClick={sendMessage}
+          >
+            Send
+          </button>
+        ) : (
+          <button
+            style={{
+              ...styles.button,
+              backgroundColor: "#dc2626", // red
+            }}
+            onClick={stopGenerating}
+          >
+            Stop
+          </button>
+        )}
       </div>
     </div>
   );
@@ -247,5 +277,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: "#2563eb",
     color: "white",
     border: "none",
+    cursor: "pointer",
   },
 };
