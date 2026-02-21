@@ -1,6 +1,7 @@
 "use client"; // this tells Next.js this file runs in browser (client side)...we need to tell this because we use usestate and browser APIs.
 
 import { useState, useRef, useEffect } from "react";
+import MarkdownRenderer from "./components/MarkdownRenderer";
 
 /*
   message type definition
@@ -185,7 +186,8 @@ export default function Home() {
                 msg.role === "user" ? "#2563eb" : "#1f2937",
             }}
           >
-            {msg.content}
+            <MarkdownRenderer content={msg.content} >
+            </MarkdownRenderer>
           </div>
         ))}
         <div ref={bottomRef} />
