@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { search } from "@/lib/vectorStore";
 
 /*
     this function handles POST requests to: /api/chat
@@ -8,6 +9,29 @@ import { NextRequest } from "next/server";
 export async function POST(req: NextRequest) {
     // Extract message sent from frontend
     const {message} = await req.json();
+
+    //get user message
+    const userMessage = message[message.length - 1].Content
+
+    //retrieve relevant docs
+    const relevantDocs = await search(userMessage);
+
+    //create context string
+    const context = relevantDocs
+        .map((doc) => doc.text)
+        .join("/n")
+
+    //argument prompt
+    const augmentedPrompt = `
+    You are a helpful AI assistant.
+    Use the context below to answer the question. Only answer from the context.
+    
+    Context:
+    ${context}
+    
+    Question:
+    ${userMessage}
+    `;
 
     /*
         we call ollama's local server

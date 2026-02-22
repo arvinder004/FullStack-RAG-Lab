@@ -186,8 +186,7 @@ export default function Home() {
                 msg.role === "user" ? "#2563eb" : "#1f2937",
             }}
           >
-            <MarkdownRenderer content={msg.content} >
-            </MarkdownRenderer>
+            <MarkdownRenderer content={msg.content} />
           </div>
         ))}
         <div ref={bottomRef} />

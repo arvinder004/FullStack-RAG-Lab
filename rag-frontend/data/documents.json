@@ -1,0 +1,14 @@
+[
+  {
+    "id": "1",
+    "text": "Next.js is a React framework for building full-stack web applications."
+  },
+  {
+    "id": "2",
+    "text": "RAG stands for Retrieval-Augmented Generation. It improves LLM responses using external knowledge."
+  },
+  {
+    "id": "3",
+    "text": "Embeddings convert text into high-dimensional vectors for semantic search."
+  }
+]
