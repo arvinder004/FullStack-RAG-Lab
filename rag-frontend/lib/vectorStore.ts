@@ -48,16 +48,22 @@ export async function initializeVectorDB() {
 
 /**
  * Search most similar Documents
+ * returns documents with similarity scores
  */
 export async function search(query:string, topK = 2) {
     await initializeVectorDB();
 
     const queryEmbedding = await createEmbedding(query);
 
-    const scored = vectorDB.map((doc) => ({
-        ...doc,
-        score: cosineSimilarity(queryEmbedding, doc.embedding),
-    }))
+    const scored = vectorDB.map((doc) => {
+        const score =  cosineSimilarity(queryEmbedding, doc.embedding),
+
+        return {
+            id: doc.id,
+            text: doc.text,
+            score, //similarity score
+        }
+    })
 
     scored.sort((a, b) => b.score - a.score)
 
