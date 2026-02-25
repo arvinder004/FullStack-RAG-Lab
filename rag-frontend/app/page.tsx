@@ -19,6 +19,7 @@ type Message = {
 export default function Home() {
   //store full conversation
   const [messages, setMessages] = useState<Message[]>([]);
+  const [retrievalDebug, setRetrievalDebug] = useState<any[]>([]);
 
   //store current input
   const [input, setInput] = useState("");
@@ -191,6 +192,34 @@ export default function Home() {
         ))}
         <div ref={bottomRef} />
       </div>
+
+      {/* 🔎 Retrieval Debug Panel */}
+{retrievalDebug.length > 0 && (
+  <div className="mt-6 bg-gray-900 border border-gray-700 rounded-xl p-4">
+    <h3 className="text-sm font-semibold text-gray-400 mb-3">
+      🔎 Retrieval Debug Info
+    </h3>
+
+    {retrievalDebug.map((doc, index) => (
+      <div
+        key={doc.id}
+        className="mb-4 p-3 bg-gray-800 rounded-lg"
+      >
+        <p className="text-xs text-gray-400 mb-2">
+          Document {index + 1}
+        </p>
+
+        <p className="text-sm text-gray-200 mb-2">
+          {doc.text}
+        </p>
+
+        <p className="text-xs text-green-400">
+          Similarity Score: {doc.score.toFixed(3)}
+        </p>
+      </div>
+    ))}
+  </div>
+)}
 
       <div style={styles.inputContainer}>
         <textarea
