@@ -1,17 +1,22 @@
 import { NextRequest } from "next/server";
 import { search } from "@/lib/vectorStore";
+import { parse } from "path";
 
 /*
-    this function handles POST requests to: /api/chat
+  This function handles POST requests to: /api/chat
 
-    When frontend sends a message. this function will forward it to Ollama and stream the response back.
+  Flow:
+  1. Get user message
+  2. Retrieve relevant documents (RAG)
+  3. Send retrieval debug info to frontend
+  4. Stream Ollama response back
 */
 export async function POST(req: NextRequest) {
     // Extract message sent from frontend
     const {message} = await req.json();
 
     //get user message
-    const userMessage = message[message.length - 1].Content
+    const userMessage = message[message.length - 1].content
 
     //retrieve relevant docs
     const relevantDocs = await search(userMessage);
@@ -23,15 +28,18 @@ export async function POST(req: NextRequest) {
 
     //argument prompt
     const augmentedPrompt = `
-    You are a helpful AI assistant.
-    Use the context below to answer the question. Only answer from the context.
-    
-    Context:
-    ${context}
-    
-    Question:
-    ${userMessage}
-    `;
+You are a helpful AI assistant.
+Use ONLY the context below to answer the question.
+If the answer is not in the context, say:
+"I don't have information about that in my knowledge base."
+
+Context:
+${context}
+
+Question:
+${userMessage}
+`;
+
 
     /*
         we call ollama's local server
@@ -79,7 +87,57 @@ export async function POST(req: NextRequest) {
     This allows real-time token streaming.
     */
 
-    return new Response(ollamaResponse.body, {
+    /**
+     * create custom streams - First send retirieval debug info, then pipe ollama streaming tokens.
+     */
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
+    const stream = new ReadableStream({
+        async start(controller) {
+
+            //send retrieval debug info FIRST
+            controller.enqueue(
+                encoder.encode(
+                    `__RETRIEVAL_DEBUG__${JSON.stringify(relevantDocs)}\n`
+                )
+            )
+
+            const reader = ollamaResponse.body?.getReader()
+
+            if(!reader){
+                controller.close;
+                return;
+            }
+
+            while(true){
+                const {done, value} = await reader.read();
+
+                if(done) break;
+
+                //ollama streams JSON line -> we must parse each line
+                const chunk = decoder.decode(value)
+                const lines = chunk.split('\n').filter(Boolean)
+
+                for (const line of lines){
+                    try{
+                        const parsed = JSON.parse(line)
+
+                        if(parsed.response){
+                            controller.enqueue(
+                                encoder.encode(parsed.response)
+                            )
+                        }
+                    } catch (err) {
+                        // ignore partial json parsing errors
+                    }
+                }
+            }
+            controller.close()
+        }
+    })
+
+    return new Response(stream, {
         headers: {
             "Content-Type": "text/plain"
         }

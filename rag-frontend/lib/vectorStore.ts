@@ -56,7 +56,7 @@ export async function search(query:string, topK = 2) {
     const queryEmbedding = await createEmbedding(query);
 
     const scored = vectorDB.map((doc) => {
-        const score =  cosineSimilarity(queryEmbedding, doc.embedding),
+        const score =  cosineSimilarity(queryEmbedding, doc.embedding)
 
         return {
             id: doc.id,
